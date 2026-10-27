@@ -6,13 +6,13 @@ import androidx.credentials.CustomCredential
 import androidx.credentials.GetCredentialRequest
 import androidx.credentials.exceptions.GetCredentialCancellationException
 import androidx.credentials.exceptions.GetCredentialException
-import com.drivemount.app.BuildConfig
 import com.drivemount.app.data.api.DriveApiClient
 import com.drivemount.app.data.api.DriveApiConstants
 import com.drivemount.app.data.cache.BlockCache
 import com.drivemount.app.data.db.AccountDao
 import com.drivemount.app.data.db.AccountEntity
 import com.drivemount.app.data.db.DriveFileDao
+import com.drivemount.app.settings.SettingsStore
 import com.google.android.gms.auth.api.identity.AuthorizationRequest
 import com.google.android.gms.auth.api.identity.Identity
 import com.google.android.gms.common.api.Scope
@@ -20,6 +20,7 @@ import com.google.android.libraries.identity.googleid.GoogleIdTokenCredential
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.Flow
+import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.tasks.await
 import kotlinx.coroutines.withContext
 import kotlinx.serialization.json.Json
@@ -47,6 +48,8 @@ class AuthManager @Inject constructor(
     private val accountDao: AccountDao,
     private val driveFileDao: DriveFileDao,
     private val blockCache: BlockCache,
+    private val settingsStore: SettingsStore,
+    private val credentialsManager: OAuthCredentialsManager,
     private val json: Json,
 ) {
     private val credentialManager = CredentialManager.create(context)
@@ -64,8 +67,10 @@ class AuthManager @Inject constructor(
      * @return The authorized [AccountEntity].
      */
     suspend fun signIn(activityContext: Context): AccountEntity = withContext(Dispatchers.IO) {
-        val serverClientId = BuildConfig.WEB_CLIENT_ID.ifBlank {
-            "768541239870-mockclientid.apps.googleusercontent.com"
+        val serverClientId = credentialsManager.getClientId()
+
+        if (serverClientId.isBlank()) {
+            throw IOException("Google credentials not configured. Please tap 'Import Credentials JSON' to select your Google Cloud client_secret.json file.")
         }
 
         // 1. Get Google ID Token via Credential Manager
@@ -85,7 +90,12 @@ class AuthManager @Inject constructor(
             throw IOException("Sign-in cancelled by user", e)
         } catch (e: GetCredentialException) {
             Timber.e(e, "Credential Manager error")
-            throw IOException("Credential retrieval failed: ${e.message}", e)
+            val msg = if (e.message?.contains("16") == true || e.message?.contains("no credentials", ignoreCase = true) == true) {
+                "Google Sign-In failed: No credentials found for Client ID ($serverClientId).\n\nPlease verify in Google Cloud Console:\n1. An Android OAuth client exists with:\n   Package: 'com.drivemount.app.debug'\n   SHA-1: '75:22:0F:07:DF:30:AE:DE:36:1A:BD:E5:DC:55:7A:64:AD:BC:3D:11'\n2. Under Audience > Test users, your Google email is added."
+            } else {
+                "Credential retrieval failed: ${e.message}"
+            }
+            throw IOException(msg, e)
         }
 
         val credential = credentialResponse.credential
@@ -130,7 +140,7 @@ class AuthManager @Inject constructor(
 
         val serverAuthCode = authorizationResult.serverAuthCode
         val (accessToken, refreshToken, expiresIn) = if (!serverAuthCode.isNullOrBlank()) {
-            exchangeAuthCode(serverAuthCode, serverClientId)
+            exchangeAuthCode(serverAuthCode, serverClientId, credentialsManager.getClientSecret())
         } else {
             // If access token was returned directly
             val token = authorizationResult.accessToken ?: ""
@@ -167,16 +177,23 @@ class AuthManager @Inject constructor(
     /**
      * Exchanges an authorization code for OAuth access and refresh tokens.
      */
-    suspend fun exchangeAuthCode(authCode: String, clientId: String): Triple<String, String, Long> = withContext(Dispatchers.IO) {
-        val formBody = FormBody.Builder()
+    suspend fun exchangeAuthCode(
+        authCode: String,
+        clientId: String,
+        clientSecret: String = credentialsManager.getClientSecret(),
+    ): Triple<String, String, Long> = withContext(Dispatchers.IO) {
+        val formBodyBuilder = FormBody.Builder()
             .add("client_id", clientId)
             .add("grant_type", "authorization_code")
             .add("code", authCode)
-            .build()
+
+        if (clientSecret.isNotBlank()) {
+            formBodyBuilder.add("client_secret", clientSecret)
+        }
 
         val request = Request.Builder()
             .url(DriveApiConstants.TOKEN_URL)
-            .post(formBody)
+            .post(formBodyBuilder.build())
             .build()
 
         rawHttpClient.newCall(request).execute().use { response ->

@@ -1,7 +1,9 @@
 package com.drivemount.app.ui.settings
 
+import android.net.Uri
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.drivemount.app.auth.OAuthCredentialsManager
 import com.drivemount.app.data.cache.BlockCache
 import com.drivemount.app.settings.SettingsStore
 import dagger.hilt.android.lifecycle.HiltViewModel
@@ -14,12 +16,13 @@ import kotlinx.coroutines.launch
 import javax.inject.Inject
 
 /**
- * ViewModel for application preferences, block cache management, and upload network constraints.
+ * ViewModel for application preferences, block cache management, and OAuth credentials file management.
  */
 @HiltViewModel
 class SettingsViewModel @Inject constructor(
     private val settingsStore: SettingsStore,
     private val blockCache: BlockCache,
+    private val credentialsManager: OAuthCredentialsManager,
 ) : ViewModel() {
 
     val cacheSizeMb: StateFlow<Int> = settingsStore.cacheSizeMb
@@ -30,6 +33,12 @@ class SettingsViewModel @Inject constructor(
 
     val chargingOnlyUploads: StateFlow<Boolean> = settingsStore.chargingOnlyUploads
         .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), false)
+
+    val credentialsFileName: StateFlow<String> = credentialsManager.credentialsFileName
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), "")
+
+    val webClientId: StateFlow<String> = credentialsManager.webClientId
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5_000L), "")
 
     private val _cacheUsedBytes = MutableStateFlow(blockCache.getCurrentSizeBytes())
     val cacheUsedBytes: StateFlow<Long> = _cacheUsedBytes.asStateFlow()
@@ -60,5 +69,16 @@ class SettingsViewModel @Inject constructor(
             _cacheUsedBytes.value = blockCache.getCurrentSizeBytes()
         }
     }
-}
 
+    fun importCredentials(uri: Uri) {
+        viewModelScope.launch {
+            credentialsManager.importCredentialsFromUri(uri)
+        }
+    }
+
+    fun clearCredentials() {
+        viewModelScope.launch {
+            credentialsManager.clearCredentials()
+        }
+    }
+}

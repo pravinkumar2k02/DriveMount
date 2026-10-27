@@ -1,5 +1,8 @@
 package com.drivemount.app.ui.settings
 
+import android.net.Uri
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -8,11 +11,17 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.CheckCircle
 import androidx.compose.material.icons.filled.DeleteSweep
+import androidx.compose.material.icons.filled.Description
+import androidx.compose.material.icons.filled.FileOpen
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.ExperimentalMaterial3Api
@@ -40,7 +49,8 @@ import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.drivemount.app.util.toReadableSize
 
 /**
- * Screen displaying local disk cache configurations, data clearing, and upload policies.
+ * Screen displaying local disk cache configurations, data clearing, upload policies,
+ * and dynamic OAuth credentials management.
  */
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
@@ -52,9 +62,19 @@ fun SettingsScreen(
     val cacheUsedBytes by viewModel.cacheUsedBytes.collectAsStateWithLifecycle()
     val wifiOnly by viewModel.wifiOnlyUploads.collectAsStateWithLifecycle()
     val chargingOnly by viewModel.chargingOnlyUploads.collectAsStateWithLifecycle()
+    val credentialsFileName by viewModel.credentialsFileName.collectAsStateWithLifecycle()
+    val webClientId by viewModel.webClientId.collectAsStateWithLifecycle()
 
     var showClearDialog by remember { mutableStateOf(false) }
     var sliderValue by remember(cacheSizeMb) { mutableFloatStateOf(cacheSizeMb.toFloat()) }
+
+    val filePickerLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.OpenDocument()
+    ) { uri: Uri? ->
+        if (uri != null) {
+            viewModel.importCredentials(uri)
+        }
+    }
 
     Scaffold(
         topBar = {
@@ -78,6 +98,86 @@ fun SettingsScreen(
                 .padding(16.dp),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
+            // ── OAuth Credentials Section ──
+            item {
+                Text(
+                    text = "Google OAuth Credentials",
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            }
+
+            item {
+                Card(
+                    modifier = Modifier.fillMaxWidth(),
+                    elevation = CardDefaults.cardElevation(defaultElevation = 2.dp)
+                ) {
+                    Column(modifier = Modifier.padding(16.dp)) {
+                        if (credentialsFileName.isNotBlank()) {
+                            Row(verticalAlignment = Alignment.CenterVertically) {
+                                Icon(
+                                    imageVector = Icons.Filled.CheckCircle,
+                                    contentDescription = null,
+                                    tint = MaterialTheme.colorScheme.primary,
+                                    modifier = Modifier.size(24.dp)
+                                )
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Column {
+                                    Text(
+                                        text = "Active credentials file: $credentialsFileName",
+                                        style = MaterialTheme.typography.bodyMedium
+                                    )
+                                    if (webClientId.isNotBlank()) {
+                                        Text(
+                                            text = "ID: ${webClientId.take(16)}...apps.googleusercontent.com",
+                                            style = MaterialTheme.typography.labelSmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+                            }
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Row(horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                                OutlinedButton(
+                                    onClick = {
+                                        filePickerLauncher.launch(
+                                            arrayOf("application/json", "text/plain", "*/*")
+                                        )
+                                    },
+                                    modifier = Modifier.weight(1f)
+                                ) {
+                                    Text("Change File")
+                                }
+                                TextButton(
+                                    onClick = { viewModel.clearCredentials() }
+                                ) {
+                                    Text("Clear")
+                                }
+                            }
+                        } else {
+                            Text(
+                                text = "No credentials file configured. Please select your client_secret.json (Web Application) to authorize Google Drive.",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Spacer(modifier = Modifier.height(12.dp))
+                            Button(
+                                onClick = {
+                                    filePickerLauncher.launch(
+                                        arrayOf("application/json", "text/plain", "*/*")
+                                    )
+                                },
+                                modifier = Modifier.fillMaxWidth()
+                            ) {
+                                Icon(Icons.Filled.Description, contentDescription = null)
+                                Spacer(modifier = Modifier.width(8.dp))
+                                Text("Select client_secret.json")
+                            }
+                        }
+                    }
+                }
+            }
+
             // ── Block Cache Section ──
             item {
                 Text(
@@ -108,7 +208,7 @@ fun SettingsScreen(
                             onValueChange = { sliderValue = it },
                             onValueChangeFinished = { viewModel.setCacheSize(sliderValue.toInt()) },
                             valueRange = 128f..4096f,
-                            steps = 30, // steps of 128MB up to 4096MB
+                            steps = 30,
                             modifier = Modifier.fillMaxWidth()
                         )
 
@@ -216,4 +316,3 @@ fun SettingsScreen(
         )
     }
 }
-

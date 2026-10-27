@@ -19,14 +19,6 @@ android {
         versionName = "1.0.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
-
-        // The web client ID is loaded from local.properties or BuildConfig
-        // Replace with your actual web client ID from Google Cloud Console
-        buildConfigField(
-            "String",
-            "WEB_CLIENT_ID",
-            "\"${project.findProperty("DRIVE_MOUNT_WEB_CLIENT_ID") ?: ""}\""
-        )
     }
 
     buildTypes {

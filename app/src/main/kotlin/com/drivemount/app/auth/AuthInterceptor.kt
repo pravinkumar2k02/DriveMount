@@ -1,6 +1,5 @@
 package com.drivemount.app.auth
 
-import com.drivemount.app.BuildConfig
 import com.drivemount.app.data.api.DriveApiConstants
 import com.drivemount.app.data.db.AccountDao
 import kotlinx.serialization.json.Json
@@ -29,6 +28,7 @@ import javax.inject.Singleton
 class AuthInterceptor @Inject constructor(
     private val tokenStore: TokenStore,
     private val accountDao: AccountDao,
+    private val credentialsManager: OAuthCredentialsManager,
     private val json: Json,
 ) : Interceptor {
 
@@ -77,9 +77,15 @@ class AuthInterceptor @Inject constructor(
             return null
         }
 
-        val clientId = BuildConfig.WEB_CLIENT_ID
+        val clientId = credentialsManager.getClientId()
+        val clientSecret = credentialsManager.getClientSecret()
         val formBodyBuilder = FormBody.Builder()
             .add("client_id", clientId)
+            .apply {
+                if (clientSecret.isNotBlank()) {
+                    add("client_secret", clientSecret)
+                }
+            }
             .add("grant_type", "refresh_token")
             .add("refresh_token", refreshToken)
 

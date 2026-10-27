@@ -11,4 +11,6 @@ local.properties
 drivemount_secure_tokens*
 *.apk
 *.aab
+*client_secret*.json
+google-services.json
 
