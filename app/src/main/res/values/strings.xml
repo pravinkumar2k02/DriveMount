@@ -1,0 +1,60 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">DriveMount</string>
+    <string name="provider_authority">com.drivemount.app.documents</string>
+
+    <!-- Sign In -->
+    <string name="sign_in_title">DriveMount</string>
+    <string name="sign_in_subtitle">Mount your Google Drive as a local drive</string>
+    <string name="sign_in_button">Sign in with Google</string>
+    <string name="sign_in_error">Sign-in failed: %1$s</string>
+
+    <!-- Accounts -->
+    <string name="accounts_title">Accounts</string>
+    <string name="add_account">Add Account</string>
+    <string name="remove_account">Remove Account</string>
+    <string name="remove_account_confirm">Remove %1$s? Cached files for this account will be deleted.</string>
+
+    <!-- Settings -->
+    <string name="settings_title">Settings</string>
+    <string name="cache_size">Cache Size</string>
+    <string name="cache_size_summary">Current: %1$s / %2$s</string>
+    <string name="clear_cache">Clear Cache</string>
+    <string name="clear_cache_confirm">Delete all cached files?</string>
+    <string name="wifi_only_uploads">Wi-Fi Only Uploads</string>
+    <string name="wifi_only_summary">Only upload files when connected to Wi-Fi</string>
+    <string name="charging_only_uploads">Charging Only Uploads</string>
+    <string name="charging_only_summary">Only upload files while charging</string>
+
+    <!-- Uploads -->
+    <string name="uploads_title">Upload Queue</string>
+    <string name="upload_progress">%1$d%%</string>
+    <string name="upload_pending">Pending</string>
+    <string name="upload_in_progress">Uploading…</string>
+    <string name="upload_paused">Paused</string>
+    <string name="upload_failed">Failed</string>
+    <string name="upload_complete">Complete</string>
+    <string name="pause_upload">Pause</string>
+    <string name="resume_upload">Resume</string>
+    <string name="cancel_upload">Cancel</string>
+    <string name="no_uploads">No uploads in queue</string>
+
+    <!-- Notifications -->
+    <string name="upload_channel_name">File Uploads</string>
+    <string name="upload_channel_description">Shows progress of file uploads to Google Drive</string>
+    <string name="upload_notification_title">Uploading to Google Drive</string>
+    <string name="upload_notification_text">%1$s — %2$d%%</string>
+
+    <!-- Provider -->
+    <string name="root_title">Google Drive (%1$s)</string>
+    <string name="root_summary">Google Drive</string>
+
+    <!-- General -->
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+    <string name="error_generic">An error occurred. Please try again.</string>
+    <string name="offline_mode">Offline — showing cached data</string>
+    <string name="open_in_files">Open in Files App</string>
+    <string name="storage_quota">Storage: %1$s used of %2$s</string>
+</resources>
+
